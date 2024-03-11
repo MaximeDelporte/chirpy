@@ -10,10 +10,8 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		http.NotFound(w, req)
-		fmt.Fprintf(w, "404 Not Found")
-	})
+	fs := http.FileServer(http.Dir("./static"))
+	mux.Handle("/", fs)
 
 	corsMux := middlewareCors(mux)
 
