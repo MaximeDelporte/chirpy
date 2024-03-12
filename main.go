@@ -7,12 +7,21 @@ import (
 	"time"
 )
 
+type apiConfig struct {
+	fileserverHits int
+}
+
 func main() {
 	mux := http.NewServeMux()
 
-	fs := http.FileServer(http.Dir("./static"))
+	apiCfg := apiConfig{}
 
-	mux.Handle("/app/*", http.StripPrefix("/app", fs))
+	fs := http.FileServer(http.Dir("./static"))
+	fsHandler := http.StripPrefix("/app", fs)
+	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(fsHandler))
+
+	mux.Handle("/metrics", apiCfg.handleMetricsRequest())
+	mux.Handle("/reset", apiCfg.handleResetRequest())
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -44,5 +53,27 @@ func middlewareCors(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cfg.fileserverHits += 1
+		w.Header().Set("Cache-Control", "no-cache")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (cfg *apiConfig) handleMetricsRequest() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := fmt.Sprintf("Hits: %d", cfg.fileserverHits)
+		w.Write([]byte(response))
+	})
+}
+
+func (cfg *apiConfig) handleResetRequest() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cfg.fileserverHits = 0
+		w.WriteHeader(200)
 	})
 }
