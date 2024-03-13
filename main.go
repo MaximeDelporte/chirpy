@@ -87,59 +87,46 @@ func handleValidateChirpRequest() http.Handler {
 			Body string `json:"body"`
 		}
 
-		type error struct {
-			Error string `json:"error"`
-		}
-
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
 		err := decoder.Decode(&params)
 
 		if err != nil {
-			respBody := error{Error: "Something went wrong"}
-			data, err := json.Marshal(respBody)
-
-			if err != nil {
-				log.Printf("Error decoding parameters: %s", err)
-				w.WriteHeader(500)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application-json")
-			w.WriteHeader(500)
-			w.Write(data)
+			respondWithError(w, 500, "Something went wrong")
 			return
 		}
 
-		if len(params.Body) <= 140 {
-			type valid struct {
-				Valid bool `json:"valid"`
-			}
-			respBody := valid{Valid: true}
-			data, err := json.Marshal(respBody)
-
-			if err != nil {
-				log.Printf("Error marshalling JSON: %s", err)
-				w.WriteHeader(500)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application-json")
-			w.WriteHeader(200)
-			w.Write(data)
-		} else {
-			respBody := error{Error: "Chirp is too long"}
-			data, err := json.Marshal(respBody)
-
-			if err != nil {
-				log.Printf("Error marshalling JSON: %s", err)
-				w.WriteHeader(500)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application-json")
-			w.WriteHeader(400)
-			w.Write(data)
+		if len(params.Body) >= 140 {
+			respondWithError(w, 400, "Chirp is too long")
+			return
 		}
+
+		type valid struct {
+			Valid bool `json:"valid"`
+		}
+		payload := valid{Valid: true}
+		respondWithJSON(w, 200, payload)
 	})
+}
+
+func respondWithError(w http.ResponseWriter, code int, msg string) {
+	type error struct {
+		Error string `json:"error"`
+	}
+
+	respondWithJSON(w, code, error{Error: msg})
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	data, err := json.Marshal(payload)
+
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application-json")
+	w.WriteHeader(code)
+	w.Write(data)
 }
