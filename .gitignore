@@ -1,2 +1,3 @@
 .idea
 tmp/
+internal/database/database.json

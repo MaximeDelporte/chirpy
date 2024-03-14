@@ -3,17 +3,28 @@ package main
 import (
 	"fmt"
 	"github.com/maximedelporte/chirpy/data"
+	"github.com/maximedelporte/chirpy/internal/database"
 	"github.com/maximedelporte/chirpy/routes"
 	"log"
 	"net/http"
-	"time"
 )
 
 func main() {
+	const filepathRoot = "."
+	const port = "8080"
+
+	db, err := database.NewDB("./internal/database/database.json")
+	if err != nil {
+		fmt.Println("CRASH")
+		log.Fatal(err)
+	}
+
+	cfg := data.ApiConfig{
+		FileserverHits: 0,
+		DB:             db,
+	}
+
 	mux := http.NewServeMux()
-
-	cfg := data.ApiConfig{}
-
 	fs := http.FileServer(http.Dir("./static"))
 	fsHandler := http.StripPrefix("/app", fs)
 	mux.Handle("/app/*", routes.MiddlewareMetricsInc(fsHandler, &cfg))
@@ -27,20 +38,22 @@ func main() {
 	})
 
 	mux.HandleFunc("GET /api/healthz", routes.HandleHealthz)
-	mux.HandleFunc("POST /api/validate_chirp", routes.HandleValidateChirp)
+	mux.HandleFunc("GET /api/chirps", func(writer http.ResponseWriter, request *http.Request) {
+		routes.HandleGetChirps(writer, request, &cfg)
+	})
+	mux.HandleFunc("POST /api/chirps", func(writer http.ResponseWriter, request *http.Request) {
+		routes.HandleCreateChirp(writer, request, &cfg)
+	})
 
 	corsMux := middlewareCors(mux)
 
 	srv := http.Server{
-		Addr:              ":8080",
-		Handler:           corsMux,
-		ReadTimeout:       10 * time.Second,
-		ReadHeaderTimeout: 10 * time.Second,
+		Addr:    ":" + port,
+		Handler: corsMux,
 	}
 
 	fmt.Printf("starting server on %s\n", srv.Addr)
-	err := srv.ListenAndServe()
-	log.Fatal(err)
+	log.Fatal(srv.ListenAndServe())
 }
 
 func middlewareCors(next http.Handler) http.Handler {
