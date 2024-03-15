@@ -44,6 +44,9 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", func(writer http.ResponseWriter, request *http.Request) {
 		routes.HandleCreateChirp(writer, request, &cfg)
 	})
+	mux.HandleFunc("GET /api/chirps/{id}", func(writer http.ResponseWriter, request *http.Request) {
+		routes.HandleGetChirp(writer, request, &cfg)
+	})
 
 	corsMux := middlewareCors(mux)
 

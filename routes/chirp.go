@@ -2,11 +2,13 @@ package routes
 
 import (
 	"encoding/json"
-	"github.com/maximedelporte/chirpy/data"
-	"github.com/maximedelporte/chirpy/internal/database"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
+
+	"github.com/maximedelporte/chirpy/data"
+	"github.com/maximedelporte/chirpy/internal/database"
 
 	"github.com/maximedelporte/chirpy/internal"
 )
@@ -31,6 +33,33 @@ func HandleGetChirps(w http.ResponseWriter, r *http.Request, cfg *data.ApiConfig
 	})
 
 	internal.RespondWithJSON(w, http.StatusOK, chirps)
+}
+
+func HandleGetChirp(w http.ResponseWriter, r *http.Request, cfg *data.ApiConfig) {
+	dbChirps, err := cfg.DB.GetChirps()
+	if err != nil {
+		internal.RespondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps.")
+		return
+	}
+	integerId, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		internal.RespondWithError(w, http.StatusInternalServerError, "Wrong entry.")
+		return
+	}
+
+	chirp := database.Chirp{ID: -1}
+
+	for _, v := range dbChirps {
+		if v.ID == integerId {
+			chirp = v
+		}
+	}
+
+	if chirp.ID == -1 {
+		internal.RespondWithError(w, http.StatusNotFound, "Chirp doesn't exist.")
+	} else {
+		internal.RespondWithJSON(w, http.StatusOK, chirp)
+	}
 }
 
 func HandleCreateChirp(w http.ResponseWriter, r *http.Request, cfg *data.ApiConfig) {
