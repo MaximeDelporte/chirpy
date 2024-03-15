@@ -48,6 +48,10 @@ func main() {
 		routes.HandleGetChirp(writer, request, &cfg)
 	})
 
+	mux.HandleFunc("POST /api/users", func(writer http.ResponseWriter, request *http.Request) {
+		routes.HandleCreateUser(writer, request, &cfg)
+	})
+
 	corsMux := middlewareCors(mux)
 
 	srv := http.Server{
