@@ -52,6 +52,10 @@ func main() {
 		routes.HandleCreateUser(writer, request, &cfg)
 	})
 
+	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
+		routes.HandleLogin(w, r, &cfg)
+	})
+
 	corsMux := middlewareCors(mux)
 
 	srv := http.Server{
